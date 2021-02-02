@@ -28,6 +28,8 @@ export interface AxiosRequestConfig {
   responseType?: XMLHttpRequestResponseType
   //指定超时时间
   timeout?: number
+
+  [propName: string]: any
 }
 
 //响应参数接口
@@ -64,6 +66,12 @@ export interface AxiosError extends Error {
 
 //描述了 Axios 类中的公共方法
 export interface Axios {
+  defaults: AxiosRequestConfig
+  interceptors: {
+    request: AxiosInterceptorManager<AxiosRequestConfig>
+    response: AxiosInterceptorManager<AxiosResponse>
+  }
+
   request(config: AxiosRequestConfig): AxiosPromise
 
   get(url: string, config?: AxiosRequestConfig): AxiosPromise
@@ -85,4 +93,18 @@ export interface AxiosInstance extends Axios {
   <T = any>(config: AxiosRequestConfig): AxiosPromise<T>
 
   <T = any>(url: string, config?: AxiosRequestConfig): AxiosPromise<T>
+}
+
+//拦截器对外接口
+export interface AxiosInterceptorManager<T> {
+  use(resolve: ResolvedFn<T>, rejected?: RejectedFn): number
+  eject(id: number): void
+}
+
+export interface ResolvedFn<T = any> {
+  (val: T): T | Promise<T>
+}
+
+export interface RejectedFn {
+  (error: any): any
 }

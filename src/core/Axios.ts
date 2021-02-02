@@ -1,5 +1,24 @@
-import { AxiosPromise, AxiosRequestConfig, Method } from '../types'
+import {
+  AxiosPromise,
+  AxiosRequestConfig,
+  AxiosResponse,
+  Method,
+  RejectedFn,
+  ResolvedFn
+} from '../types'
 import dispatchRequest from './dispatchRequst'
+import InterceptorManager from './interceptorManager'
+import mergeConfig from './mergeConfig'
+
+interface Interceptors {
+  request: InterceptorManager<AxiosRequestConfig>
+  response: InterceptorManager<AxiosResponse>
+}
+
+interface PromiseChain {
+  resolved: ResolvedFn | ((config: AxiosRequestConfig) => AxiosPromise)
+  rejected?: RejectedFn
+}
 
 /**
  * 对于 `get`、`delete`、`head`、`options`、`post`、`patch`、`put` 这些方法，都是对外提供的语法糖，内部都是通过调用 `request` 方法实现发送请求，
@@ -7,6 +26,18 @@ import dispatchRequest from './dispatchRequst'
  */
 
 export default class Axios {
+  //默认配置
+  defaults: AxiosRequestConfig
+  interceptors: Interceptors
+
+  constructor(initConfig: AxiosRequestConfig) {
+    this.defaults = initConfig
+    this.interceptors = {
+      request: new InterceptorManager<AxiosRequestConfig>(),
+      response: new InterceptorManager<AxiosResponse>()
+    }
+  }
+
   //支持传入两个参数
   request<T = any>(url: any, config?: any): AxiosPromise<T> {
     if (typeof url === 'string') {
@@ -15,7 +46,32 @@ export default class Axios {
     } else {
       config = url
     }
-    return dispatchRequest(config)
+
+    config = mergeConfig(this.defaults, config)
+
+    const chain: PromiseChain[] = [
+      {
+        resolved: dispatchRequest,
+        rejected: undefined
+      }
+    ]
+
+    this.interceptors.request.forEach(interceptor => {
+      chain.unshift(interceptor)
+    })
+
+    this.interceptors.response.forEach(interceptor => {
+      chain.push(interceptor)
+    })
+
+    let promise = Promise.resolve(config)
+
+    while (chain.length) {
+      const { resolved, rejected } = chain.shift()!
+      promise = promise.then(resolved, rejected)
+    }
+
+    return promise
   }
 
   get<T = any>(url: string, config?: AxiosRequestConfig): AxiosPromise<T> {

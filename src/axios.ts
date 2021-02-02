@@ -1,10 +1,11 @@
 import Axios from './core/Axios'
+import defaults from './default'
 import { extend } from './helpers/utils'
-import { AxiosInstance } from './types'
+import { AxiosInstance, AxiosRequestConfig } from './types'
 
-function createInstance(): AxiosInstance {
+function createInstance(config: AxiosRequestConfig): AxiosInstance {
   //实例化Axios实例context
-  const context = new Axios()
+  const context = new Axios(config)
   //创建instance指向Axios.prototype.request方法，并绑定上下文context
   const instance = Axios.prototype.request.bind(context)
   //将context中的原型方法和实例方法全部拷贝到instance上，这样就实现了一个混合对象
@@ -14,6 +15,6 @@ function createInstance(): AxiosInstance {
 }
 
 //通过createInstance工厂函数创建axios
-const axios = createInstance()
+const axios = createInstance(defaults)
 
 export default axios
